@@ -56,12 +56,12 @@ if __name__ == '__main__':
             print_list = list()
             if 'or' in query_line:
                 queries = set(re.split(' or ', query_line))
-                for i, search_line in enumerate(index_string):
-                    if set(queries) & search_line:
+                for (i, search_line) in enumerate(index_string):
+                    if queries & search_line:
                         print_list.append(i+1)
             elif 'and' in query_line:
                 queries = set(re.split(' and ',query_line))
-                for i, search_line in enumerate(index_string):
+                for (i, search_line) in enumerate(index_string):
                     if queries < search_line:
                         print_list.append(i+1)
 
@@ -69,7 +69,7 @@ if __name__ == '__main__':
                 queries = re.split(' not ', query_line)
                 in_element = queries[0]
                 notin_element = set(queries[1:])
-                for i, search_line in enumerate(index_string):
+                for (i, search_line) in enumerate(index_string):
                     if (in_element in search_line
                         and not notin_element < search_line):
                         print_list.append(i+1)
