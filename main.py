@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from threading import Process, Manager
+from multiprocessing import Process, Manager
 import sys
 import csv
 import re
@@ -8,7 +8,7 @@ RE_CJK = re.compile(r'[\u4e00-\ufaff]+', re.UNICODE)
 RE_ENG = re.compile(r'[a-zA-Z]+')
 RE_ALL = re.compile(r'[a-zA-Z\u4e00-\ufaff]+', re.UNICODE)
 
-PROCESS_NUM = 4
+PROCESS_NUM = 2
 
 class Trie():
     pass
@@ -16,7 +16,7 @@ class Trie():
 def split_line(filename):
     csvfile = open(filename, 'r', newline='')
     sourcereader = csv.reader(csvfile, delimiter=',')
-    index = [list(), list(), list(), list()]
+    index = [list(), list()]
     for (i, line) in enumerate(sourcereader):
         cjk_strings = RE_CJK.findall(line[1])
         eng_strings = RE_ENG.findall(line[1])
@@ -77,7 +77,7 @@ if __name__ == '__main__':
             processes = list()
             if 'or' in query_line:
                 queries = set(re.split(' or ', query_line))
-                for i in range(0,3):
+                for i in range(0, PROCESS_NUM):
                     p = Process(target=or_search,
                                 args=(print_list, queries, index_string[i], i))
                     p.start()
@@ -85,7 +85,7 @@ if __name__ == '__main__':
 
             elif 'and' in query_line:
                 queries = set(re.split(' and ', query_line))
-                for i in range(0,3):
+                for i in range(0, PROCESS_NUM):
                     p = Process(target=and_search,
                                 args=(print_list, queries, index_string[i], i))
                     p.start()
@@ -94,7 +94,7 @@ if __name__ == '__main__':
                 queries = re.split(' not ', query_line)
                 in_element = queries[0]
                 notin_element = set(queries[1:])
-                for i in range(0,3):
+                for i in range(0, PROCESS_NUM):
                     p = Process(target=not_search,
                                 args=(print_list, in_element, notin_element, index_string[i], i))
                     p.start()
