@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from threading import Process, Manager
+from threading import Thread, Lock
 import sys
 import csv
 import re
@@ -8,7 +8,9 @@ RE_CJK = re.compile(r'[\u4e00-\ufaff]+', re.UNICODE)
 RE_ENG = re.compile(r'[a-zA-Z]+')
 RE_ALL = re.compile(r'[a-zA-Z\u4e00-\ufaff]+', re.UNICODE)
 
-PROCESS_NUM = 4
+THREAD_NUM = 4
+
+THREAD_LOCK = Lock()
 
 class Trie():
     pass
@@ -26,30 +28,35 @@ def split_line(filename):
             split_string.update([string[i:i+3] for i in range(0, len(string))])
         if eng_strings:
             split_string.update(eng_strings)
-        index[i % PROCESS_NUM].append(split_string)
+        index[i % THREAD_NUM].append(split_string)
     csvfile.close()
 
     return index
 
 
-def or_search(print_list, queries, index_string, process_index):
+def or_search(print_list, queries, index_string, thread_index):
     for (i, search_line) in enumerate(index_string):
+        THREAD_LOCK.acquire()
         if queries & search_line:
-            print_list.append(i*PROCESS_NUM+process_index+1)
+            print_list.append(i*THREAD_NUM+thread_index+1)
+        THREAD_LOCK.release()
 
 
-def and_search(print_list, queries, index_string, process_index):
+def and_search(print_list, queries, index_string, thread_index):
     for (i, search_line) in enumerate(index_string):
+        THREAD_LOCK.acquire()
         if queries < search_line:
-            print_list.append(i*PROCESS_NUM+process_index+1)
+            print_list.append(i*THREAD_NUM+thread_index+1)
+        THREAD_LOCK.release()
 
 
-def not_search(print_list, in_element, notin_element, index_string, process_index):
+def not_search(print_list, in_element, notin_element, index_string, thread_index):
     for (i, search_line) in enumerate(index_string):
+        THREAD_LOCK.acquire()
         if (in_element in search_line
             and not notin_element < search_line):
-            print_list.append(i*PROCESS_NUM+process_index+1)
-
+            print_list.append(i*THREAD_NUM+thread_index+1)
+        THREAD_LOCK.release()
 
 if __name__ == '__main__':
 
@@ -73,35 +80,35 @@ if __name__ == '__main__':
         for query_line in q:
             query_line = re.sub('\n', '', query_line)
             # with Manager() as manager:
-            print_list = Manager().list()
-            processes = list()
+            print_list = list()
+            threads = list()
             if 'or' in query_line:
                 queries = set(re.split(' or ', query_line))
-                for i in range(0,3):
-                    p = Process(target=or_search,
+                for i in range(0, THREAD_NUM):
+                    s = Thread(target=or_search,
                                 args=(print_list, queries, index_string[i], i))
-                    p.start()
-                    processes.append(p)
+                    s.start()
+                    threads.append(s)
 
             elif 'and' in query_line:
                 queries = set(re.split(' and ', query_line))
-                for i in range(0,3):
-                    p = Process(target=and_search,
+                for i in range(0, THREAD_NUM):
+                    s = Thread(target=and_search,
                                 args=(print_list, queries, index_string[i], i))
-                    p.start()
-                    processes.append(p)
+                    s.start()
+                    threads.append(s)
             elif 'not' in query_line:
                 queries = re.split(' not ', query_line)
                 in_element = queries[0]
                 notin_element = set(queries[1:])
-                for i in range(0,3):
-                    p = Process(target=not_search,
+                for i in range(0, THREAD_NUM):
+                    s = Thread(target=not_search,
                                 args=(print_list, in_element, notin_element, index_string[i], i))
-                    p.start()
-                    processes.append(p)
+                    s.start()
+                    threads.append(s)
 
-            for process in processes:
-                process.join()
+            for thread in threads:
+                thread.join()
 
             if not print_list:
                 print('0', file=o)
