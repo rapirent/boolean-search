@@ -9,9 +9,6 @@ RE_ENG = re.compile(r'[a-zA-Z]+')
 RE_ALL = re.compile(r'[a-zA-Z\u4e00-\ufaff]+', re.UNICODE)
 
 
-class Trie():
-    pass
-
 def split_line(filename):
     csvfile = open(filename, 'r', newline='')
     sourcereader = csv.reader(csvfile, delimiter=',')
