@@ -8,17 +8,12 @@ RE_CJK = re.compile(r'[\u4e00-\ufaff]+', re.UNICODE)
 RE_ENG = re.compile(r'[a-zA-Z]+')
 RE_ALL = re.compile(r'[a-zA-Z\u4e00-\ufaff]+', re.UNICODE)
 
-THREAD_NUM = 4
-
-THREAD_LOCK = Lock()
-
-class Trie():
-    pass
+THREAD_NUM = 2
 
 def split_line(filename):
     csvfile = open(filename, 'r', newline='')
     sourcereader = csv.reader(csvfile, delimiter=',')
-    index = [list(), list(), list(), list()]
+    index = [list(), list()]
     for (i, line) in enumerate(sourcereader):
         cjk_strings = RE_CJK.findall(line[1])
         eng_strings = RE_ENG.findall(line[1])
@@ -36,27 +31,21 @@ def split_line(filename):
 
 def or_search(print_list, queries, index_string, thread_index):
     for (i, search_line) in enumerate(index_string):
-        THREAD_LOCK.acquire()
         if queries & search_line:
             print_list.append(i*THREAD_NUM+thread_index+1)
-        THREAD_LOCK.release()
 
 
 def and_search(print_list, queries, index_string, thread_index):
     for (i, search_line) in enumerate(index_string):
-        THREAD_LOCK.acquire()
         if queries < search_line:
             print_list.append(i*THREAD_NUM+thread_index+1)
-        THREAD_LOCK.release()
 
 
 def not_search(print_list, in_element, notin_element, index_string, thread_index):
     for (i, search_line) in enumerate(index_string):
-        THREAD_LOCK.acquire()
         if (in_element in search_line
             and not notin_element < search_line):
             print_list.append(i*THREAD_NUM+thread_index+1)
-        THREAD_LOCK.release()
 
 if __name__ == '__main__':
 
