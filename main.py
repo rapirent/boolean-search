@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from multiprocessing import Process, Manager
+from threading import Process, Manager
 import sys
 import csv
 import re
@@ -8,6 +8,7 @@ RE_CJK = re.compile(r'[\u4e00-\ufaff]+', re.UNICODE)
 RE_ENG = re.compile(r'[a-zA-Z]+')
 RE_ALL = re.compile(r'[a-zA-Z\u4e00-\ufaff]+', re.UNICODE)
 
+PROCESS_NUM = 4
 
 class Trie():
     pass
@@ -15,44 +16,39 @@ class Trie():
 def split_line(filename):
     csvfile = open(filename, 'r', newline='')
     sourcereader = csv.reader(csvfile, delimiter=',')
-    index_2gram = list()
-    index_3gram = list()
-    index_english = list()
-    for line in sourcereader:
+    index = [list(), list(), list(), list()]
+    for (i, line) in enumerate(sourcereader):
         cjk_strings = RE_CJK.findall(line[1])
         eng_strings = RE_ENG.findall(line[1])
-        split_string_2gram = set()
-        split_string_3gram = set()
+        split_string = set()
         for string in cjk_strings:
-            split_string_2gram.update([string[i:i+2] for i in range(0, len(string))])
-            split_string_3gram.update([string[i:i+3] for i in range(0, len(string))])
-
-        index_2gram.append(split_string_2gram)
-        index_3gram.append(split_string_3gram)
-        index_english.append(set(eng_strings))
+            split_string.update([string[i:i+2] for i in range(0, len(string))])
+            split_string.update([string[i:i+3] for i in range(0, len(string))])
+        if eng_strings:
+            split_string.update(eng_strings)
+        index[i % PROCESS_NUM].append(split_string)
     csvfile.close()
 
-    return [index_2gram, index_3gram, index_english]
+    return index
 
 
-def or_search(print_list, queries, index_string):
-    for i, search_line in enumerate(index_string):
-        if (i+1) not in print_list and queries & search_line:
-            print_list.append(i+1)
+def or_search(print_list, queries, index_string, process_index):
+    for (i, search_line) in enumerate(index_string):
+        if queries & search_line:
+            print_list.append(i*PROCESS_NUM+process_index+1)
 
 
-def and_search(print_list, queries, index_string):
-    for i, search_line in enumerate(index_string):
-        if (i+1) not in print_list and queries < search_line:
-            print_list.append(i+1)
+def and_search(print_list, queries, index_string, process_index):
+    for (i, search_line) in enumerate(index_string):
+        if queries < search_line:
+            print_list.append(i*PROCESS_NUM+process_index+1)
 
 
-def not_search(print_list, in_element, notin_element, index_string):
-    for i, search_line in enumerate(index_string):
-        if ((i+1) not in print_list
-            and in_element in search_line
+def not_search(print_list, in_element, notin_element, index_string, process_index):
+    for (i, search_line) in enumerate(index_string):
+        if (in_element in search_line
             and not notin_element < search_line):
-            print_list.append(i+1)
+            print_list.append(i*PROCESS_NUM+process_index+1)
 
 
 if __name__ == '__main__':
@@ -78,26 +74,29 @@ if __name__ == '__main__':
             query_line = re.sub('\n', '', query_line)
             # with Manager() as manager:
             print_list = Manager().list()
-            processes = []
+            processes = list()
             if 'or' in query_line:
                 queries = set(re.split(' or ', query_line))
-                for i in range(0,2):
-                    p = Process(target=or_search, args=(print_list, queries, index_string[i]))
+                for i in range(0,3):
+                    p = Process(target=or_search,
+                                args=(print_list, queries, index_string[i], i))
                     p.start()
                     processes.append(p)
 
             elif 'and' in query_line:
                 queries = set(re.split(' and ', query_line))
-                for i in range(0,2):
-                    p = Process(target=and_search, args=(print_list, queries, index_string[i]))
+                for i in range(0,3):
+                    p = Process(target=and_search,
+                                args=(print_list, queries, index_string[i], i))
                     p.start()
                     processes.append(p)
             elif 'not' in query_line:
                 queries = re.split(' not ', query_line)
                 in_element = queries[0]
                 notin_element = set(queries[1:])
-                for i in range(0,2):
-                    p = Process(target=not_search, args=(print_list, in_element, notin_element, index_string[i]))
+                for i in range(0,3):
+                    p = Process(target=not_search,
+                                args=(print_list, in_element, notin_element, index_string[i], i))
                     p.start()
                     processes.append(p)
 
@@ -107,4 +106,5 @@ if __name__ == '__main__':
             if not print_list:
                 print('0', file=o)
             else:
+                print_list.sort()
                 print(','.join(map(str, print_list)), file=o)
