@@ -10,13 +10,11 @@ RE_ALL = re.compile(r'[a-zA-Z\u4e00-\ufaff]+', re.UNICODE)
 
 THREAD_NUM = 2
 
-def split_line(filename):
-    csvfile = open(filename, 'r', newline='')
-    sourcereader = csv.reader(csvfile, delimiter=',')
-    index = [list(), list()]
-    for (i, line) in enumerate(sourcereader):
-        cjk_strings = RE_CJK.findall(line[1])
-        eng_strings = RE_ENG.findall(line[1])
+
+def index_parallel(source, start, step, index):
+    for i in range(start, len(source), 2):
+        cjk_strings = RE_CJK.findall(source[i][1])
+        eng_strings = RE_ENG.findall(source[i][1])
         split_string = set()
         for string in cjk_strings:
             split_string.update([string[i:i+2] for i in range(0, len(string))])
@@ -24,6 +22,20 @@ def split_line(filename):
         if eng_strings:
             split_string.update(eng_strings)
         index[i % THREAD_NUM].append(split_string)
+
+
+def split_line(filename):
+    csvfile = open(filename, 'r', newline='')
+    sourcereader = list(csv.reader(csvfile, delimiter=','))
+    index = [list(), list()]
+    threads = list()
+    for i in range(0, THREAD_NUM):
+        s = Thread(target=index_parallel, args=(sourcereader, i, THREAD_NUM, index))
+        s.start()
+        threads.append(s)
+    for thread in threads:
+        thread.join()
+
     csvfile.close()
 
     return index
