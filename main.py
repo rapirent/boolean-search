@@ -90,7 +90,7 @@ if __name__ == '__main__':
                                 args=(print_list, queries, index_string[i], i))
                     s.start()
                     threads.append(s)
-
+          
             elif 'and' in query_line:
                 queries = set(re.split(' and ', query_line))
                 for i in range(0, THREAD_NUM):
