@@ -1,10 +1,10 @@
-# DSAI-HW2
+# boolean-search
 
 ## Description
 
 This is an implementation about HW2 of NCKU class `DSAI`.
 
-You can refer more detailed information in [jupyter-notebook](./HW2.ipynb) or [online-jupyter-notebook](https://nbviewer.jupyter.org/github/rapirent/DSAI-HW2/blob/master/HW2.ipynb)
+You can refer more detailed information in [jupyter-notebook](./boolean-search.ipynb) or [online-jupyter-notebook](https://nbviewer.jupyter.org/github/rapirent/boolean-search/blob/master/boolean-search.ipynb)
 
 ## prepare
 
